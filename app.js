@@ -1,73 +1,56 @@
 const express = require("express")
-const passport = require("passport")
 require('dotenv').config();
+const authRouter = require('./routes/auth-routes')
 const cookieSession = require('cookie-session')
-const passportSetup = require("./passport")
+const cookies = require('cookie-parser')
 const cors= require("cors");
+const bodyParser = require('body-parser')
+const passport = require("passport")
+
 
 const app = express()
-
-
-
-
+/*
+=============================================================== 
+//**  Middelwares
+===============================================================
+*/
 //* Enable cors
 const corsOptions ={
-    origin:'http://localhost:8080', 
-    credentials:true,            //access-control-allow-credentials:true
-    optionSuccessStatus:200,
+    origin: process.env.ORIGIN_URL, 
+    credentials: true,
+    optionSuccessStatus: 200,
 }
-app.use(cors(corsOptions)) // Use this after the variable declaration
+app.use(cors(corsOptions))
 
-
-//* set up session cookies
+//* Section Cookies
 app.use(cookieSession({
     maxAge: 24 * 60 * 60 * 1000,
     keys: [process.env.COOKIE_CODE]
 }));
-//** */ initialize passport
+app.use(cookies());
+
+//* initialize passport
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(bodyParser.json())
 
 
 
 
+/*
+=============================================================== 
+//* Routes Setup
+===============================================================
+*/
+app.use('/auth', authRouter)
 
-//* Routes
-app.get('/auth/login/failed', (req, res)=>{
-    res.status(401).json({
-        error: true,
-        message: 'Log in failure',
-    })
-})
-app.get('/auth/login/success', (req, res)=>{
-    if(req.user){
-        res.status(200).json({
-            error: false,
-            message: 'Log in success',
-            user: req.user
-        })
-    }else{
-        res.status(403).json({error: true, message: "Not Authorized"})
-    }
-})
-
-app.get('/auth/google/redirect', passport.authenticate('google', {
-    successRedirect: process.env.CLIENT_URL,
-    failureRedirect: "/auth/login/failed",
-}) )
-app.get('/auth/google', passport.authenticate('google', {
-    scope: ['profile']
-}))
-
-// app.get('logout', (req, res) => {
-//     req.logOut()
-//     res.redirect(process.env.CLIENT_URL)
-// })
-
-
-// Start the server
-app.listen("3000", ()=>{
-    console.log("starting server on port 3000")
+/*
+=============================================================== 
+//* Starting App
+===============================================================
+*/
+app.listen(process.env.PORT, ()=>{
+    console.log("starting server on port ", process.env.PORT)
 })
 
  
