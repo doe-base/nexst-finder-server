@@ -1,6 +1,7 @@
 const express = require("express")
 require('dotenv').config();
 const authRouter = require('./routes/auth-routes')
+const userRouter = require('./routes/user-routes')
 const cookieSession = require('cookie-session')
 const cookies = require('cookie-parser')
 const cors= require("cors");
@@ -43,6 +44,7 @@ app.use(bodyParser.json())
 ===============================================================
 */
 app.use('/auth', authRouter)
+app.use('/user', userRouter)
 
 /*
 =============================================================== 

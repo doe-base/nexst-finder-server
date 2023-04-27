@@ -1,5 +1,6 @@
 const passport = require("passport")
 const GoogleStrategy = require('passport-google-oauth20').Strategy
+const FacebookStrategy = require('passport-facebook')
 const SQLConnection = require('./sql')
 
 //* Passport auth0 google strategy
@@ -11,42 +12,77 @@ passport.use(new GoogleStrategy({
 
 }, (accessToken, refreshToken, profile, done)=>{
     //! check if user already exists in our own db
-    const sql1 = `SELECT * FROM google_auth WHERE google_id LIKE '${profile.id}'`
+    const sql1 = `SELECT * FROM google_auth WHERE auth_id LIKE '${profile.id}'`
     SQLConnection.query(sql1, (err, result)=>{
         if(err){
-            console.log("Error finding", err.sqlMessage)
-            res.status(404).json({
-                message: "Error: " + err.sqlMessage
-              })
+            console.log(err.sqlMessage)
         }else{
             if(!result[0]){
                 //! if not, create user in our db
-                const sql2 = `INSERT INTO google_auth(google_id,user_name) VALUES ('${profile.id}', '${profile.displayName}')`
+                const sql2 = `INSERT INTO google_auth(auth_id,user_name) VALUES ('${profile.id}', '${profile.displayName}')`
                 SQLConnection.query(sql2, (err, result)=>{
                     if(err){
-                        console.log("Error Inserting", err.sqlMessage)
-                        res.status(404).json({
-                            message: "Error creating user: " + err.sqlMessage
-                          })
+                        console.log(err.sqlMessage)
                     }else{
-                        done(null, profile)
-                        res.status(200).json({
-                            message: "new user created successfully",
-                            user : profile.id
-                          })
+                        const {insertId} = result
+                        const sql3 = `SELECT * FROM google_auth WHERE user_id LIKE '${insertId}'`
+                        SQLConnection.query(sql3, (err, result) => {
+                            if(err){
+                                console.log(err.sqlMessage)
+                            }else{
+                                done(null, result[0])
+                            }
+                        })
                     }
                 })
             }else{
                  //! already have this user
-                done(null, profile)
-                res.status(200).json({
-                    message: "Found existing user",
-                    user : profile.id
-                  })
+                done(null, result[0])
             }
         }
     })
 }))
+
+
+
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_CLIENT_ID,
+    clientSecret: process.env.FACEBOOK_SECRET,
+    callbackURL: process.env.FACEBOOK_REDIRECT_URL
+  },
+  function(accessToken, refreshToken, profile, done) {
+    //! check if user already exists in our own db
+    const sql1 = `SELECT * FROM facebook_auth WHERE auth_id LIKE '${profile.id}'`
+    SQLConnection.query(sql1, (err, result)=>{
+        if(err){
+            console.log(err.sqlMessage)
+        }else{
+            if(!result[0]){
+                //! if not, create user in our db
+                const sql2 = `INSERT INTO facebook_auth(auth_id,user_name) VALUES ('${profile.id}', '${profile.displayName}')`
+                SQLConnection.query(sql2, (err, result)=>{
+                    if(err){
+                        console.log(err.sqlMessage)
+                    }else{
+                        const {insertId} = result
+                        const sql3 = `SELECT * FROM facebook_auth WHERE user_id LIKE '${insertId}'`
+                        SQLConnection.query(sql3, (err, result) => {
+                            if(err){
+                                console.log(err.sqlMessage)
+                            }else{
+                                done(null, result[0])
+                            }
+                        })
+                    }
+                })
+            }else{
+                 //! already have this user
+                 done(null, result[0])
+            }
+        }
+    })
+}))
+
 passport.serializeUser((user, done) => {
     done(null, user)
 });

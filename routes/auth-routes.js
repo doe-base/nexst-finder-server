@@ -1,6 +1,7 @@
 const express = require('express');
 const authController = require('../controllers/auth-controller')
 const router = express.Router()
+const passport = require('passport');
 
 
 const app = express()
@@ -14,10 +15,6 @@ router.get('/login/failed', authController.signin_failed)
 router.get('/login/success', authController.signin_success)
 router.get('/google/redirect', authController.google_redirect)
 router.get('/google', authController.google_signin)
-// router.get('logout', (req, res) => {
-//     req.logOut()
-//     res.redirect(process.env.CLIENT_URL)
-// })
 
 
 
@@ -36,8 +33,13 @@ router.post('/email/verify-code', authController.verify_mail)
 //* Routes associated with facebook auth
 ===============================================================
 */
-router.post('/auth/facebook', authController.facebook_signin)
+// router.get('/facebook/success', authController.facebook_success)
+router.get('/facebook/failed', authController.facebook_failed)
+router.get('/facebook/redirect', passport.authenticate('facebook', {successRedirect: process.env.CLIENT_URL,failureRedirect: '/auth/facebook/failed'}))
+router.get('/facebook', authController.facebook_signin)
 
+
+router.get('/logout', authController.logout)
 
 
 module.exports = router

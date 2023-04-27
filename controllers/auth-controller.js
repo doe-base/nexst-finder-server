@@ -49,6 +49,11 @@ const checkUser = (req, res, next)=>{
     res.status(401).json({error: true, message: "Unauthorized"})
    }
 }
+const logout = (req, res) => {
+    req.logout()
+    res.cookie('jwt', '', {maxAge: 1})
+    res.redirect(process.env.CLIENT_LOGOUT_URL)
+}
 
 
 /*
@@ -68,7 +73,7 @@ const signin_success = (req, res, next)=>{
         res.status(200).json({
             error: false,
             message: 'Log in success',
-            user: req.user.id
+            user: req.user
         })
     }else{
         res.status(403).json({error: true, message: "Not Authorized"})
@@ -109,9 +114,8 @@ const email_auth = (req, res) => {
             message: "Error: " + error.message
           })
         } else {
-          console.log('Email sent: ' + info.response);
           res.status(204).json({
-            message: "Success: " + info.response
+            message: "Success"
           })
         }
       });
@@ -124,7 +128,7 @@ const verify_mail = function (req, res) {
         const sql1 = `SELECT * FROM email_auth WHERE user_email LIKE '${userEmail}'`
         SQLConnection.query(sql1, (err, result)=>{
             if(err){
-                console.log("Error finding", err.sqlMessage)
+                console.log(err.sqlMessage)
                 res.status(404).json({
                     message: "Error: " + err.message
                   })
@@ -132,30 +136,38 @@ const verify_mail = function (req, res) {
                 if(!result[0]){
                     //Store user in database
                     const newEmailId = generateUniqueId()
-                    const sql = `INSERT INTO email_auth(user_email, email_id) VALUES ('${userEmail}', '${newEmailId}')`
+                    const sql = `INSERT INTO email_auth(user_email, auth_id) VALUES ('${userEmail}', '${newEmailId}')`
                     SQLConnection.query(sql, (err, result)=>{
                         if(err){
-                            console.log("Error Inserting", err.sqlMessage)
+                            console.log(err.sqlMessage)
                         }else{
-                            // create session token
-                            const token = createToken(userEmail)
-                            console.log(token)
-                            res.cookie('jwt', token, {
-                                httpOnly: true,
-                                maxAge: 365 * 24 * 60 * 60 * 1000
+                            const sql = `SELECT * FROM email_auth WHERE user_email='${userEmail}'`
+                            SQLConnection.query(sql, (err, result)=>{
+                                if(err){
+                                    console.log(err.sqlMessage)
+                                }else{
+                                    // create session token
+                                    const token = createToken(result[0])
+                                    res.cookie('jwt', token, {
+                                        httpOnly: true,
+                                        maxAge: 365 * 24 * 60 * 60 * 1000
+                                    })
+                                    res.status(201).json({user: result[0]})
+                                }
                             })
-                            res.status(201).json({user: userEmail})
+                            
                         }
                     })
                 }else{
+
                     // create session token
-                    const token = createToken(userEmail)
-                    console.log(token)
+                    const token = createToken(result[0])
+                    const {complete} = result[0]
                     res.cookie('jwt', token, {
                         httpOnly: true,
                         maxAge: 365 * 24 * 60 * 60 * 1000
                     })
-                    res.status(201).json({user: userEmail})
+                    res.status(201).json({user: result[0]})
                 }
             }
         })
@@ -172,9 +184,15 @@ const verify_mail = function (req, res) {
 //* Controllers associated with facebook auth
 ===============================================================
 */
-const facebook_signin = ((req, res)=>{
 
-})
+const facebook_failed = (req, res)=>{
+    res.status(401).json({
+        error: true,
+        message: 'Log in failure',
+    })
+}
+
+const facebook_signin = passport.authenticate('facebook', {scope: 'email'})
 
 module.exports = {
     checkUser,
@@ -182,7 +200,9 @@ module.exports = {
     signin_success,
     google_redirect,
     google_signin,
+    logout,
     email_auth,
     verify_mail,
-    facebook_signin
+    facebook_signin,
+    facebook_failed
 }
